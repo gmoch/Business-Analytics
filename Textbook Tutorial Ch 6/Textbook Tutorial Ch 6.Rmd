@@ -1,0 +1,44 @@
+---
+title: "Textbook Tutorial Ch 6"
+author: Granger Moch and Sam Eckhardt
+output: 
+  html_document:
+    toc: true
+    number_sections: true 
+    theme: flatly 
+    highlight: zenburn
+---
+
+```{r}
+library(car)
+library(RcmdrMisc)
+library(BCA)
+data(CCS, package="BCA")
+load("CCSLogistic.RData")
+
+```
+#Lift Chart for Estimation Sample 
+```{r}
+lift.chart(c("LinearCCS", "LogCCS", "MixedCCS", "MixedCCS2"), CCS[CCS$Sample=="Estimation",], 
+  "Yes", .01, "cumulative", "Estimation")
+```
+
+The LogCCS model and the MixedCCS2 models perform similarly over the entire range of the sample.
+
+#Lift Chart Using Validation Sample
+```{r}
+lift.chart(c("LinearCCS", "LogCCS", "MixedCCS", "MixedCCS2"), CCS[CCS$Sample=="Validation",], 
+  "Yes", .01, "cumulative", "Validation")
+```
+
+The performance of the LogCCS and MixedCCS2 models is nearly identical. However, the MixedCCS2 model is preferred to the LogCCS model because it has fewer estimated coefficients. (parsimony)
+
+#Incremental Response Rate Chart Using Validation Sample
+```{r}
+lift.chart(c("MixedCCS2"), CCS[CCS$Sample=="Validation",], "Yes", .01, "incremental", 
+  "Validation")
+```
+
+We can see that targeting the most likely donors first will give good incremental response
+rates.
+

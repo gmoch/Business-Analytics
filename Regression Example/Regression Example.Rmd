@@ -1,0 +1,65 @@
+---
+title: "Regression"
+author: "Granger Moch"
+date: "March 5, 2015"
+output: html_document
+---
+```{r}
+state.x77
+?state.x77
+st=data.frame(state.x77)
+library(sjPlot)
+
+
+colnames(st)[4]="Life.Exp"  #remove spaces in variable name
+colnames(st)[6] = "HS.Grad"   #remove spaces in variable name
+st[,9] = st$Population * 1000 / st$Area
+colnames(st)[9] = "Density" 
+
+summary(st)
+cor(st)
+pairs(st)
+
+
+options(show.signif.stars=T) 
+
+names(st) 
+
+model1 = lm(Life.Exp ~ Population + Income + Illiteracy + Murder + HS.Grad + Frost + Area + Density, data=st)
+
+summary(model1)
+
+summary.aov(model1)
+
+model2=lm(formula = Life.Exp ~ Population + Income + Illiteracy + Murder + 
+    HS.Grad + Frost + Density, data = st)
+
+summary(model2)
+
+anova(model1, model2) #compare the two models
+
+model3=lm(formula = Life.Exp ~ Population + Income + Murder + HS.Grad + 
+    Frost + Density, data = st)
+
+summary(model3)
+
+model4=lm(formula = Life.Exp ~ Population + Murder + HS.Grad + Frost + 
+    Density, data = st)
+
+summary(model4)
+
+model5=lm(formula = Life.Exp ~ Population + Murder + HS.Grad + Frost, 
+    data = st)
+
+anova(model5, model4) 
+
+model6=lm(formula = Life.Exp ~ Murder + HS.Grad + Frost, data = st)
+
+summary(model6)
+
+step(model1, direction="backward")
+
+?step()
+
+sjt.lm(model1, model2, model3, model4, model5)
+```

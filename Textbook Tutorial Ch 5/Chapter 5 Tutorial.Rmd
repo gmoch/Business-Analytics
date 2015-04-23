@@ -1,0 +1,130 @@
+---
+title: "Chapter 5 Tutorial: Logistic Regression" 
+author: Granger Moch and Sam Eckhardt
+output: 
+  html_document:
+    toc: true
+    number_sections: true 
+    theme: flatly 
+    highlight: zenburn
+
+---
+```{r echo=FALSE}
+library(car)
+library(BCA)
+library(RcmdrMisc)
+```
+
+```{r}
+data(CCS, package="BCA")
+```
+
+```{r}
+CCS$Sample <- create.samples(CCS, est = 0.50, val = 0.50, rand.seed = 1)
+```
+
+```{r}
+CCS <- within(CCS, {
+  MonthGive.Num <- Recode(MonthGive, '"Yes"= 1; "No"= 0', as.factor.result=FALSE)
+})
+```
+
+```{r}
+scatterplot(MonthGive.Num~AveDonAmt, reg.line=lm, smooth=TRUE, spread=TRUE, 
+  id.method='mahal', id.n = 2, boxplots='xy', span=0.5, data=CCS)
+```
+
+```{r}
+CCS$AveDonAmt.Cat <- with(CCS, bin.var(AveDonAmt, bins=4, method='proportions', 
+  labels=NULL))
+```
+
+```{r}
+with(CCS, plotMeans(MonthGive.Num, AveDonAmt.Cat, error.bars="none"))
+```
+
+```{r}
+with(CCS, plotMeans(MonthGive.Num, Region, error.bars="none"))
+```
+
+```{r}
+with(CCS, plotMeans(MonthGive.Num, Region, error.bars="se"))
+```
+
+```{r}
+LinearCCS <- glm(MonthGive ~ Age20t29 + Age70pls + AveDonAmt + AveIncEA + 
+  DonPerYear + EngPrmLang + FinUnivP + LastDonAmt + Region + YearsGive, 
+  family=binomial(logit), data=CCS, subset=Sample== "Estimation")
+summary(LinearCCS)
+1 - (LinearCCS$deviance/LinearCCS$null.deviance) # McFadden R2
+```
+
+```{r}
+Anova(LinearCCS, type="II", test="LR")
+```
+
+```{r}
+library(abind, pos=23)
+```
+
+```{r}
+library(e1071, pos=24)
+```
+
+```{r}
+numSummary(CCS[,c("DonPerYear", "YearsGive")], statistics=c("mean", "sd", 
+  "IQR", "quantiles"), quantiles=c(0,.25,.5,.75,1))
+```
+
+```{r}
+CCS$Log.DonPerYear <- with(CCS, log(DonPerYear+1))
+```
+
+```{r}
+CCS$Log.YearsGive <- with(CCS, log(YearsGive+1))
+```
+
+```{r}
+CCS$Log.LastDonAmt <- with(CCS, log(LastDonAmt))
+```
+
+```{r}
+CCS$Log.AveDonAmt <- with(CCS, log(AveDonAmt))
+```
+
+```{r}
+LogCCS <- glm(MonthGive ~ Log.AveDonAmt + Log.DonPerYear + Log.LastDonAmt + 
+  Log.YearsGive + Region + Age20t29 + Age70pls + EngPrmLang + AveIncEA + 
+  FinUnivP, family=binomial(logit), data=CCS, subset=Sample == "Estimation")
+summary(LogCCS)
+1 - (LogCCS$deviance/LogCCS$null.deviance) # McFadden R2
+```
+
+```{r}
+Anova(LogCCS, type="II", test="LR")
+```
+
+```{r}
+CCS$New.Region <- relabel.factor(CCS$Region, new.labels=c('"Other"',
+  '"VanFraser"','"VanFraser"','"Other"','"Other"','"Other"'))
+```
+
+```{r}
+MixedCCS <- glm(MonthGive ~ AveIncEA + DonPerYear + LastDonAmt + Log.AveDonAmt + 
+  New.Region + YearsGive, family=binomial(logit), data=CCS, subset=Sample== 
+  "Estimation")
+summary(MixedCCS)
+1 - (MixedCCS$deviance/MixedCCS$null.deviance) # McFadden R2
+```
+
+```{r}
+MixedCCS2 <- glm(MonthGive ~ AveIncEA + DonPerYear + Log.AveDonAmt + 
+  Log.LastDonAmt + New.Region, family=binomial(logit), data=CCS, subset=Sample 
+  == "Estimation")
+summary(MixedCCS2)
+1 - (MixedCCS2$deviance/MixedCCS2$null.deviance) # McFadden R2
+
+
+step(LinearCCS, direction="backward")
+```
+

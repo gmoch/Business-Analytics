@@ -1,0 +1,210 @@
+---
+title: "Assignment 1- R Commands Exposure"
+author: Sam Eckhardt and Granger Moch 
+output: 
+  html_document:
+    toc: true
+    number_sections: true 
+    theme: flatly 
+    highlight: zenburn
+---
+
+```{r}
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(gridExtra))
+suppressPackageStartupMessages(library(scales))
+suppressPackageStartupMessages(library(rCharts))
+suppressPackageStartupMessages(library(car))
+suppressPackageStartupMessages(library(Rcmdr))
+```
+
+```{r}
+local({r <- getOption("repos"); 
+       r["CRAN"] <- "http://cran.r-project.org"; options(repos=r)})
+
+install.packages("nutshell")
+data(births2006.smpl, package="nutshell")
+
+??births2006.smpl
+```
+
+#-
+How many variables and how many observations are there?
+```{r}
+summary(births2006.smpl)
+numOp=count(births2006.smpl)
+numOp
+```
+
+#-
+Which variables are numeric and which variables are factor?
+
+```{r} 
+str(births2006.smpl)
+```
+
+#-
+Please re-label different months from numbers to name of months (1: January)
+
+```{r}
+births2006.smpl$DOB_MM= factor(births2006.smpl$DOB_MM, 
+labels= c('January', 'February','March','April','May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'))
+```
+
+#-
+Plot a bar graph of number of deliveries by month.
+```{r}
+deliveries_plot_month= ggplot(births2006.smpl, aes(x=DOB_MM)) + geom_bar() +xlab("Month") + ggtitle("Deliveries By Month") + ylab("Births")
+deliveries_plot_month
+```
+
+
+#-
+Please re-label different days of week (1: Sunday)
+```{r}
+births2006.smpl$DOB_WK= factor(births2006.smpl$DOB_WK,
+levels=c('1','2','3','4','5','6','7'),
+labels=c('Sunday','Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'))
+```
+
+#-
+Plot a bar graph of number of deliveries by day of week.
+
+```{r}
+deliveries_plot_day= ggplot(births2006.smpl, aes(x=DOB_WK, fill=DOB_WK, label=DOB_WK)) + geom_bar() +xlab("Day") + ggtitle("Deliveries By Day") + ylab("Births")
+deliveries_plot_day
+```
+
+#-
+Plot histograms of Weight gains of mother and Birth weight of baby.
+
+```{r}
+wgainHisto= ggplot(births2006.smpl, aes(x=WTGAIN)) +geom_histogram() +xlab("Weight-Gain(Pounds)") +ggtitle("Mothers' Weight Gain")
+wgainHisto
+
+birthw= ggplot(births2006.smpl,aes(x=DBWT)) +geom_histogram() +xlab("Birth Weight(Grams)") +ggtitle("Birth Weights")
+birthw
+```
+
+#- 
+Create two additional variables in which you bin Weight gains of mother and birth weight of baby into 4 different categories (for each) with approximately equal numbers in each category. Give the 4 bins understandable labels. Plot bar graphs for both these new variables.
+
+```{r}
+births2006.smpl$DBWT.Cat <- with(births2006.smpl, bin.var(DBWT, bins=4, method='proportions',
+   labels=c('Small','Medium','Large','Extra Large')))
+
+birthwbin= ggplot(births2006.smpl,aes(x=DBWT.Cat)) +geom_bar() +xlab("Birth Weight(Grams)") +ggtitle("Birth Weights")
+birthwbin
+
+births2006.smpl$WTGAIN.Cat <- with(births2006.smpl, bin.var(WTGAIN, bins=4, method='proportions',
+   labels=c('Small Gain','Medium Gain','Large Gain','Very Large Gain')))
+
+WTGAIN.Cat_bar= ggplot(births2006.smpl, aes(x=WTGAIN.Cat, fill=WTGAIN.Cat)) + geom_bar()
+WTGAIN.Cat_bar
+```
+
+#-
+Is there a relationship between Weight gains of mother (4 bins) and birth weight of baby (4 bins)?
+
+```{r}
+
+births2006sub= births2006.smpl %>%
+filter(WTGAIN!="NA" & DBWT.Cat!="NA")
+
+
+cont=table(births2006sub$WTGAIN.Cat, births2006sub$DBWT.Cat)
+cont
+
+chisq.test(cont) 
+#ggplot(births2006sub, aes(x=WTGAIN, y=DBWT, color=DBWT.Cat)) +geom_point()+ geom_smooth(method=lm, color="black")
+
+```
+Judging from this p-value, there seems to be a significant relationship between these two factors.
+#-
+Is there a relationship between birth weight of baby (4 bins) and gender of baby?
+```{r}
+
+cont1=table(births2006sub$DBWT.Cat, births2006sub$SEX)
+
+cont1
+
+chisq.test(cont1)
+```
+Judging from this p-value, there seems to be a significant relationship between these two factors.
+
+#-
+Plot a bar graph of delivery method (DMETH_REC)
+```{r}
+ggplot(births2006.smpl, aes(x=DMETH_REC, fill=DMETH_REC)) + geom_bar() +scale_y_continuous(labels = comma)
+```
+
+#-
+Subset the dataset by removing the “Unknown” in Delivery method
+
+```{r}
+births2006.smpl= births2006.smpl %>%
+filter(DMETH_REC!="Unknown")
+
+ggplot(births2006.smpl, aes(x=DMETH_REC, fill=DMETH_REC)) + geom_bar()+ scale_y_continuous(labels= comma)
+```
+
+
+a. Is there a relationship between delivery method (C-Section or Vaginal versus Day of the week)
+```{r}
+births2006sub= births2006.smpl %>%
+filter(DMETH_REC!="Unknown")
+
+births2006sub$DMETH_REC= factor(births2006sub$DMETH_REC)
+cont2= table(births2006sub$DMETH_REC, births2006sub$DOB_WK)
+
+cont2
+
+chisq.test(cont2)
+
+```
+
+b. Plot bar graphs for number of deliveries on different days of week for both methods of deliveries.
+
+```{r}
+# subset1= births2006.smpl %>%
+# select(DMETH_REC, DOB_WK) %>%
+# filter(DMETH_REC!="Unknown")
+# 
+# subset1$DMETH_REC= factor(subset1$DMETH_REC)
+# 
+# birthsbardf2= table(subset1$DOB_WK,subset1$DMETH_REC)
+# birthsbardf2=as.data.frame(birthsbardf2)
+# 
+# birthsbardf2$Var1= factor(birthsbardf2$Var1,
+# levels=c('1','2','3','4','5','6','7'),
+# labels=c('Sunday','Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'))
+# 
+# 
+# birthsbarplot1 <- nPlot(Freq ~ Var1, group = 'Var2', data = birthsbardf2, type = 'multiBarChart')
+# 
+# birthsbarplot1
+
+```
+
+
+
+c. Is there a relationship between delivery method and gender of baby? Present bar-graphs for both methods.
+```{r}
+
+cont3=table(births2006sub$DMETH_REC, births2006sub$SEX)
+
+chisq.test(cont3)
+
+```
+
+d. Is there a relationship between delivery method and DPLURAL?
+
+```{r fig.width=11, fig.height=6}
+
+cont4= table(births2006sub$DMETH_REC, births2006sub$DPLURAL)
+cont4
+chisq.test(cont4)
+
+```
+

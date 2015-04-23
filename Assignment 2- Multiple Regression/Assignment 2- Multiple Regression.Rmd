@@ -1,0 +1,106 @@
+---
+title: "Assignment 2- Multiple Regression" 
+author: Granger Moch and Sam Eckhardt
+output: 
+  html_document:
+    toc: true
+    number_sections: true 
+    theme: flatly 
+    highlight: zenburn
+
+---
+```{r}
+local({r <- getOption("repos"); 
+       r["CRAN"] <- "http://cran.r-project.org"; options(repos=r)})
+
+install.packages("ISLR")
+library(dplyr)
+library(ggplot2)
+library(ISLR)
+library(gridExtra)
+data(Carseats)
+```
+#-
+Summarize the variables and identify numeric and factor variables.
+
+```{r}
+summary(Carseats)
+str(Carseats)
+```
+
+#- 
+Plot histograms of numeric variables and bar plots for factor variables.
+
+```{r}
+
+p1= ggplot(Carseats, aes(x=Sales)) + geom_histogram()
+p2= ggplot(Carseats, aes(x=CompPrice)) + geom_histogram()
+p3= ggplot(Carseats, aes(x=Income)) + geom_histogram()
+p4= ggplot(Carseats, aes(x=Advertising)) + geom_histogram()
+p5= ggplot(Carseats, aes(x=Population)) + geom_histogram()
+p6= ggplot(Carseats, aes(x=Price)) + geom_histogram()
+p7= ggplot(Carseats, aes(x=Age)) + geom_histogram()
+p8= ggplot(Carseats, aes(x=Education)) + geom_histogram()
+
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8)
+
+
+p9= ggplot(Carseats, aes(x=Urban)) + geom_bar()
+p10=ggplot(Carseats, aes(x=ShelveLoc)) + geom_bar()
+p11=ggplot(Carseats, aes(x=US)) + geom_bar()
+
+grid.arrange(p9,p10,p11, ncol=3)
+```
+
+#-
+Using a combination of correlation matrix of numeric variables and scatterplot matrix or combinations of scatterplots, which numeric variables seem to have a relationship with Sales of car seats?
+```{r}
+
+Carseatsnum= Carseats %>%
+  select(1:6, 8:9)
+
+cor(Carseatsnum, use="complete.obs", method="pearson")
+```
+It doesn't seem as though any of the numeric variables have a strong relationship to sales of carseats.
+
+#- 
+Plot boxplots to visualize distribution of Sales across multiple levels of the three factor variables. Interpret how levels of a variable might be affecting sales.
+
+```{r}
+
+p12= ggplot(Carseats, aes(x=Urban, y=Sales)) + geom_boxplot()
+p13= ggplot(Carseats, aes(x=US, y=Sales)) + geom_boxplot()
+p14=ggplot(Carseats, aes(x=ShelveLoc, y=Sales)) + geom_boxplot()
+
+grid.arrange(p12,p13,p14, ncol=3)
+```
+
+Good shelf location indicates higher sales, as does being based in the US.
+
+
+#-
+Develop a regression model to predict sales using all other variables, including factor variables. Which variables have an impact on sales? Interpret the coefficients of factor variables.
+
+```{r}
+
+reg= lm(Sales~CompPrice+Income+Advertising+Population+Price+ShelveLoc+Age+Education+Urban+US, data=Carseats)
+summary(reg)
+
+```
+
+The variables that have an effect on sales are the variables which are statistically significant. This includes Competitor Price, Income, Advertising, Age, and Shelve Location. 
+
+Interpreting the factor variables, medium shelf location means that it would increase sales by 1.95. Good shelf location increases sales by 4.85.
+
+If the sale takes place in an urban area, sales increase by .12 compared to when a sale takes place in a non-urban area. However, this is not significant.
+
+If the sale takes place in the United States, sales decrease by .18 compared to when a sale takes place in another country. However, this is not significant.
+
+#-
+Use the ANOVA model to identify which variables have a significant impact on sales?
+
+```{r}
+aov(reg)
+summary(aov(reg))
+anova(reg)
+```

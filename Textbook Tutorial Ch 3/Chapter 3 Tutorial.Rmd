@@ -1,0 +1,232 @@
+---
+title: <h1 style='text-align:center'>Chapter 3 Tutorial </h1>
+author: <h4 style='text-align:center'>Granger Moch, Sam Eckhardt <hr>
+output: 
+  html_document:
+    toc: true
+    number_sections: true 
+    theme: flatly 
+    highlight: zenburn
+---
+
+<hr>
+#Load Required Packages
+</br>
+```{r}
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(Rcmdr))
+suppressPackageStartupMessages(library(car))
+Jack.Jill=read.csv("Jack.Jill.csv")
+```
+<hr>
+#Data Cleaning
+##Remove Households That Have No Female Head
+</br>
+```{r}
+Jack.Jill= Jack.Jill %>%
+filter(Employment!="No female head")
+```
+<hr>
+##Set Row Names
+</br>
+```{r}
+row.names(Jack.Jill) <- as.character(Jack.Jill$HH.ID)
+Jack.Jill$HH.ID <- NULL
+```
+<hr>
+#Creating Simple Summary Statistics Tutorial
+##Summarize Variables 
+</br>
+```{r}
+summary(Jack.Jill)
+```
+<hr>
+##Numerical Summary 
+</br>
+```{r}
+numSummary(Jack.Jill[,"Spending"], statistics=c("mean", "sd", "IQR", "quantiles"), 
+  quantiles=c(0,.25,.5,.75,1))
+```
+<hr>
+##Numerical Summary Summarized By Children Group
+</br>
+```{r}
+numSummary(Jack.Jill[,"Spending"], groups=Jack.Jill$Children, statistics=c("mean", 
+  "sd", "IQR", "quantiles"), quantiles=c(0,.25,.5,.75,1))
+```
+<hr>
+##Correlation Matrix
+</br>
+```{r}
+cor(CCS[,c("AveDonAmt","DonPerYear","LastDonAmt","YearsGive")], use="complete")
+```
+<hr>
+#Frequency Distributions and Histograms 
+##Histogram Showing Spending On Children's Apparel
+</br>
+```{r}
+with(Jack.Jill, Hist(Spending, scale="frequency", breaks=60, col="darkgray"))
+```
+<hr>
+##Binning Continous Variable (Spending)
+</br>
+```{r}
+Jack.Jill$Spend.Cat <- with(Jack.Jill, bin.var(Spending, bins=3, method='proportions',
+   labels=c('Low','Medium','High')))
+```
+<hr>
+##Frequency Distribution To Verify Equal Count Binning
+</br>
+```{r}
+local({
+  .Table <- with(Jack.Jill, table(Spend.Cat))
+  cat("\ncounts:\n")
+  print(.Table)
+  cat("\npercentages:\n")
+  print(round(100*.Table/sum(.Table), 2))
+})
+```
+</br>
+
+##Bar Graph of the Number of Children Present
+</br>
+```{r}
+with(Jack.Jill, barplot(table(Children), xlab="Children", ylab="Frequency"))
+```
+</br>
+<hr>
+##Create New Factor Variable
+</br>
+```{r}
+Jack.Jill$New.Children <- factor(Jack.Jill$Children, labels=c('1 Child',
+  '2 Children','3+ Children','3+ Children'))
+
+Jack.Jill$New.Children=factor(Jack.Jill$New.Children)
+```
+</br>
+<hr>
+##Barplot of New.Children factor
+</br>
+```{r}
+with(Jack.Jill, barplot(table(New.Children), xlab="New.Children", ylab="Frequency"))
+```
+</br>
+<hr>
+
+##Contingency Table with Spend.Cat and New.Children
+</br>
+```{r}
+local({
+  .Table <- xtabs(~Spend.Cat+New.Children, data=Jack.Jill)
+  cat("\nFrequency table:\n")
+  print(.Table)
+  .Test <- chisq.test(.Table, correct=FALSE)
+  print(.Test)
+})
+```
+</br>
+<hr>
+##Contingency Table with Spend.Cat and New.Children 
+</br>
+```{r}
+local({
+  .Table <- xtabs(~Spend.Cat+New.Children, data=Jack.Jill)
+  cat("\nFrequency table:\n")
+  print(.Table)
+  cat("\nColumn percentages:\n")
+  print(colPercents(.Table))
+  .Test <- chisq.test(.Table, correct=FALSE)
+  print(.Test)
+  cat("\nExpected counts:\n")
+  print(.Test$expected)
+})
+```
+</br>
+<hr>
+##Contingency Table with Spend.Cat and Income
+</br>
+```{r}
+local({
+  .Table <- xtabs(~Spend.Cat+Income, data=Jack.Jill)
+  cat("\nFrequency table:\n")
+  print(.Table)
+  cat("\nColumn percentages:\n")
+  print(colPercents(.Table))
+  .Test <- chisq.test(.Table, correct=FALSE)
+  print(.Test)
+  cat("\nExpected counts:\n")
+  print(.Test$expected)
+})
+```
+</br>
+<hr>
+## Create Properly Ordered Income Factor 
+```{r}
+Jack.Jill$Income <- with(Jack.Jill, factor(Income, levels=c('$0-$20k','$20k-$30k','$30k-$40k','$40k-$50k','$50k-$60k','$60k-$75k','$75k-$100k','$100k+'), ordered=TRUE))
+```
+</br>
+<hr>
+##Recreate Contingency Table Using the Reordered Income Variable
+```{r}
+local({
+  .Table <- xtabs(~Spend.Cat+Income, data=Jack.Jill)
+  cat("\nFrequency table:\n")
+  print(.Table)
+  cat("\nColumn percentages:\n")
+  print(colPercents(.Table))
+  .Test <- chisq.test(.Table, correct=FALSE)
+  print(.Test)
+  cat("\nExpected counts:\n")
+  print(.Test$expected)
+})
+```
+</br>
+<hr>
+##Contigency Table of Spend.Cat and Education 
+```{r}
+local({
+  .Table <- xtabs(~Spend.Cat+Education, data=Jack.Jill)
+  cat("\nFrequency table:\n")
+  print(.Table)
+  cat("\nColumn percentages:\n")
+  print(colPercents(.Table))
+  .Test <- chisq.test(.Table, correct=FALSE)
+  print(.Test)
+  cat("\nExpected counts:\n")
+  print(.Test$expected)
+})
+```
+</br>
+<hr>
+##Contigency Table of Spend.Cat and Age 
+```{r}
+local({
+  .Table <- xtabs(~Spend.Cat+Age, data=Jack.Jill)
+  cat("\nFrequency table:\n")
+  print(.Table)
+  cat("\nColumn percentages:\n")
+  print(colPercents(.Table))
+  .Test <- chisq.test(.Table, correct=FALSE)
+  print(.Test)
+  cat("\nExpected counts:\n")
+  print(.Test$expected)
+})
+```
+</br>
+<hr>
+</br>
+
+##Contigency Table of Spend.Cat and Birth Country
+```{r}
+local({
+  .Table <- xtabs(~Spend.Cat+BrthCntry, data=Jack.Jill)
+  cat("\nFrequency table:\n")
+  print(.Table)
+  cat("\nColumn percentages:\n")
+  print(colPercents(.Table))
+  .Test <- chisq.test(.Table, correct=FALSE)
+  print(.Test)
+  cat("\nExpected counts:\n")
+  print(.Test$expected)
+})
+```

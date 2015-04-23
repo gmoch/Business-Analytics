@@ -1,0 +1,282 @@
+--- 
+title: "<center>Bagging and Random Forests Tutorial</center>"
+author: "<center>Granger Moch, Sam Eckhardt</center>" 
+date: "<center>March 31, 2015</center> <hr>"
+output:  
+  html_document:
+    toc: true
+    number_sections: false 
+    theme: flatly 
+    highlight: zenburn
+---    
+<hr>
+
+## Recap from last week
+
+### Logistic Regression Model
+
+```{r message=FALSE}
+library(BCA)
+data(CCS)
+CCS$Sample <- create.samples(CCS, est = 0.50, val = 0.50, rand.seed = 1)
+CCSwithsplitvar=CCS
+
+logreg = glm(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + Age70pls + Age80pls + AveDonAmt +AveIncEA + DonPerYear + DwelValEA + EngPrmLang + FinUnivP + hh1mem + hh1t2mem + LastDonAmt + NewDonor + Region + SomeUnivP + YearsGive, family="binomial", data=CCSwithsplitvar[which(CCSwithsplitvar$Sample=="Estimation"),])
+```
+### Initial Tree Model
+
+```{r message=FALSE}
+library(rpart)
+library(rpart.plot)
+tree1CCS = rpart(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + Age70pls + Age80pls + AveDonAmt +AveIncEA + DonPerYear + DwelValEA + EngPrmLang + FinUnivP + hh1mem + hh1t2mem + LastDonAmt + NewDonor + Region + SomeUnivP + YearsGive, data=CCSwithsplitvar, cp=0.01, subset=Sample == "Estimation")
+
+```
+ 
+
+## Initial Tree
+
+```{r}
+rpart.plot(tree1CCS, type = 0, extra = 2, uniform = TRUE, fallen.leaves = FALSE)
+```
+ 
+## Remove Average donation and Last Donation Amount
+```{r}
+noAorLDA <- rpart(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + Age70pls + Age80pls + AveIncEA + DonPerYear + DwelValEA + EngPrmLang + FinUnivP + hh1mem + hh1t2mem + NewDonor + Region + SomeUnivP + YearsGive, data=CCSwithsplitvar,cp=0.001, subset=Sample == "Estimation")
+rpart.plot(noAorLDA, type = 0, extra = 2, uniform = TRUE, fallen.leaves = FALSE)
+```
+ 
+## Identifying lowest cross validation error
+
+```{r}
+plotcp(noAorLDA)
+
+```
+ 
+##  Pruned tree with Cp at the lowest cross validation error
+```{r}
+cplowesterror=noAorLDA$cptable[which.min(noAorLDA$cptable[,"xerror"]),"CP"]
+treeLowesterrornoAorLDA=prune(noAorLDA, cp=cplowesterror)
+rpart.plot(treeLowesterrornoAorLDA, type = 0, extra = 2, uniform = TRUE, fallen.leaves = FALSE)
+```
+ 
+## Gains Chart: Estimation 
+
+```{r echo=F}
+par(mfrow=c(1,2))
+lift.chart(c("logreg", "tree1CCS","treeLowesterrornoAorLDA"), CCSwithsplitvar[CCSwithsplitvar$Sample=="Estimation",], "Yes", .01, "cumulative", "Estimation")
+
+lift.chart(c("logreg", "tree1CCS","treeLowesterrornoAorLDA"), CCSwithsplitvar[CCSwithsplitvar$Sample=="Validation",], "Yes", .01, "cumulative", "Validation")
+```
+ 
+## Bagging of CCS data
+```{r message=FALSE}
+library(randomForest)
+set.seed(1)
+baggingCCS = randomForest(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + Age70pls + Age80pls + AveDonAmt +AveIncEA + DonPerYear + DwelValEA + EngPrmLang + FinUnivP + hh1mem + hh1t2mem + LastDonAmt + NewDonor + Region + SomeUnivP + YearsGive, data=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",],mtry=19,importance=TRUE)
+baggingCCS
+```
+ 
+## Importance of predictor variables
+```{r}
+importance(baggingCCS)
+```
+ 
+## Importance of predictor variables
+```{r}
+varImpPlot(baggingCCS)
+```
+ 
+## Random Forest
+```{r}
+rfCCS=randomForest(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + Age70pls + Age80pls + AveDonAmt +AveIncEA + DonPerYear + DwelValEA + EngPrmLang + FinUnivP + hh1mem + hh1t2mem + LastDonAmt + NewDonor + Region + SomeUnivP + YearsGive, data=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",],importance=TRUE) 
+
+rfCCS
+```
+ 
+## Sample with rfCCS - Estimation data
+
+```{r}
+predrf = predict(rfCCS,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",],type="class")
+predrfprob = predict(rfCCS,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",],type="prob")
+head(predrf,2)
+head(predrfprob,2)
+```
+ 
+## Example Confusion matrix implementation for rfCCS - Estimation Data
+```{r message=FALSE}
+actualvals=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",]$MonthGive
+library(caret)
+confmatrf=confusionMatrix(predrf,actualvals,positive="Yes")
+confmatrf$table
+```
+
+ 
+## Example Confusion matrix statistics
+
+```{r}
+confmatrf$byClass
+confmatrf$overall
+```
+ 
+## Gains Chart - Estimation data
+
+* ROCR helps visualize binary classifier performance using three commands for each classifier (or four, if you counted the command to predict using model)
+  * prediction, performance, and plot
+
+```{r}
+actualestim=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",]$MonthGive
+library(ROCR)
+# for logistic regression
+estimpredglm= predict(logreg,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",],type="response")
+estimrocrpredglm=prediction(estimpredglm,actualestim)
+estimrocrperfglm=performance(estimrocrpredglm,"tpr","rpp")
+# for tree1CCS
+estimpredtree1ccs = predict(tree1CCS, type="prob", newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",])
+estimrocrpredtree1ccs=prediction(estimpredtree1ccs[,2],actualestim)
+estimrocrperftree1ccs=performance(estimrocrpredtree1ccs,"tpr","rpp")
+# for noAorLDA
+estimprednoAorLDA = predict(noAorLDA, type="prob", newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",])
+estimrocrprednoAorLDA=prediction(estimprednoAorLDA[,2],actualestim)
+estimrocrperfnoAorLDA=performance(estimrocrprednoAorLDA,"tpr","rpp")
+```
+ 
+## Gains Chart - Estimation Data
+```{r}
+# for bagging
+estimpredbaggingCCS = predict(baggingCCS,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",],type="prob")
+estimrocrpredbaggingCCS=prediction(estimpredbaggingCCS[,2],actualestim)
+estimrocrperfbaggingCCS=performance(estimrocrpredbaggingCCS,"tpr","rpp")
+# for random forest
+estimpredrfCCS = predict(rfCCS,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",],type="prob")
+estimrocrpredrfCCS=prediction(estimpredrfCCS[,2],actualestim)
+estimrocrperfrfCCS=performance(estimrocrpredrfCCS,"tpr","rpp")
+```
+ 
+## Gains Chart - Estimation Data
+```{r echo=FALSE}
+plot(estimrocrperfglm,col="cyan1",, main="Gains Chart: Estimation")
+plot(estimrocrperftree1ccs,col="gold4", add=TRUE)
+plot(estimrocrperfnoAorLDA,col="blue",add=TRUE)
+plot(estimrocrperfbaggingCCS,col="purple",add=TRUE)
+plot(estimrocrperfrfCCS,col="red",add=TRUE)
+legend("bottomright",  c("LogReg","Tree1CCS","NoAorLDA","Bagging","Random Forest"), lty=c(1,1),col=c("cyan1","gold4","blue","purple","red"), horiz=FALSE)
+abline(a=0,b=1,lwd=2,lty=2,col="gray") 
+```
+ 
+## Gains Chart - Validation Data
+```{r echo=FALSE}
+actualvalid=CCSwithsplitvar[CCSwithsplitvar$Sample == "Validation",]$MonthGive
+# for logistic regression
+validpredglm= predict(logreg,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Validation",],type="response")
+validrocrpredglm=prediction(validpredglm,actualvalid)
+validrocrperfglm=performance(validrocrpredglm,"tpr","rpp")
+
+# for tree1CCS
+validpredtree1ccs = predict(tree1CCS, type="prob", newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Validation",])
+validrocrpredtree1ccs=prediction(validpredtree1ccs[,2],actualvalid)
+validrocrperftree1ccs=performance(validrocrpredtree1ccs,"tpr","rpp")
+
+# for noAorLDA
+validprednoAorLDA = predict(noAorLDA, type="prob", newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Validation",])
+validrocrprednoAorLDA=prediction(validprednoAorLDA[,2],actualvalid)
+validrocrperfnoAorLDA=performance(validrocrprednoAorLDA,"tpr","rpp")
+
+# for bagging
+validpredbaggingCCS = predict(baggingCCS,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Validation",],type="prob")
+validrocrpredbaggingCCS=prediction(validpredbaggingCCS[,2],actualvalid)
+validrocrperfbaggingCCS=performance(validrocrpredbaggingCCS,"tpr","rpp")
+
+# for random forest
+validpredrfCCS = predict(rfCCS,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Validation",],type="prob")
+validrocrpredrfCCS=prediction(validpredrfCCS[,2],actualvalid)
+validrocrperfrfCCS=performance(validrocrpredrfCCS,"tpr","rpp")
+
+# plotting all
+plot(validrocrperfglm,col="cyan1",, main="Gains Chart: Validation")
+plot(validrocrperftree1ccs,col="gold4", add=TRUE)
+plot(validrocrperfnoAorLDA,col="blue",add=TRUE)
+plot(validrocrperfbaggingCCS,col="purple",add=TRUE)
+plot(validrocrperfrfCCS,col="red",add=TRUE)
+
+legend("bottomright",  c("LogReg","Tree1CCS","NoAorLDA","Bagging","Random Forest"), lty=c(1,1),col=c("cyan1","gold4","blue","purple","red"), horiz=FALSE)
+abline(a=0,b=1,lwd=2,lty=2,col="gray") 
+```
+ 
+
+## ROC Curves 
+
+```{r echo=FALSE}
+estimpredglm= predict(logreg,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",],type="response")
+estimrocrpredglm=prediction(estimpredglm,actualestim)
+estimrocrperfglm=performance(estimrocrpredglm,"tpr","fpr")
+
+# for tree1CCS
+estimpredtree1ccs = predict(tree1CCS, type="prob", newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",])
+estimrocrpredtree1ccs=prediction(estimpredtree1ccs[,2],actualestim)
+estimrocrperftree1ccs=performance(estimrocrpredtree1ccs,"tpr","fpr")
+
+# for noAorLDA
+estimprednoAorLDA = predict(noAorLDA, type="prob", newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",])
+estimrocrprednoAorLDA=prediction(estimprednoAorLDA[,2],actualestim)
+estimrocrperfnoAorLDA=performance(estimrocrprednoAorLDA,"tpr","fpr")
+
+# for bagging
+estimpredbaggingCCS = predict(baggingCCS,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",],type="prob")
+estimrocrpredbaggingCCS=prediction(estimpredbaggingCCS[,2],actualestim)
+estimrocrperfbaggingCCS=performance(estimrocrpredbaggingCCS,"tpr","fpr")
+
+# for random forest
+estimpredrfCCS = predict(rfCCS,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Estimation",],type="prob")
+estimrocrpredrfCCS=prediction(estimpredrfCCS[,2],actualestim)
+estimrocrperfrfCCS=performance(estimrocrpredrfCCS,"tpr","fpr")
+
+par(mfrow=c(1,2))
+# plotting all
+plot(estimrocrperfglm,col="cyan1",, main="ROC Curves:Estimation")
+plot(estimrocrperftree1ccs,col="gold4", add=TRUE)
+plot(estimrocrperfnoAorLDA,col="blue",add=TRUE)
+plot(estimrocrperfbaggingCCS,col="purple",add=TRUE)
+plot(estimrocrperfrfCCS,col="red",add=TRUE)
+
+legend("bottomright",  c("LogReg","Tree1CCS","NoAorLDA","Bagging","Random Forest"), lty=c(1,1),col=c("cyan1","gold4","blue","purple","red"), horiz=FALSE)
+abline(a=0,b=1,lwd=2,lty=2,col="gray") 
+
+## On Validation Data
+
+actualvalid=CCSwithsplitvar[CCSwithsplitvar$Sample == "Validation",]$MonthGive
+# for logistic regression
+validpredglm= predict(logreg,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Validation",],type="response")
+validrocrpredglm=prediction(validpredglm,actualvalid)
+validrocrperfglm=performance(validrocrpredglm,"tpr","fpr")
+
+# for tree1CCS
+validpredtree1ccs = predict(tree1CCS, type="prob", newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Validation",])
+validrocrpredtree1ccs=prediction(validpredtree1ccs[,2],actualvalid)
+validrocrperftree1ccs=performance(validrocrpredtree1ccs,"tpr","fpr")
+
+# for noAorLDA
+validprednoAorLDA = predict(noAorLDA, type="prob", newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Validation",])
+validrocrprednoAorLDA=prediction(validprednoAorLDA[,2],actualvalid)
+validrocrperfnoAorLDA=performance(validrocrprednoAorLDA,"tpr","fpr")
+
+# for bagging
+validpredbaggingCCS = predict(baggingCCS,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Validation",],type="prob")
+validrocrpredbaggingCCS=prediction(validpredbaggingCCS[,2],actualvalid)
+validrocrperfbaggingCCS=performance(validrocrpredbaggingCCS,"tpr","fpr")
+
+# for random forest
+validpredrfCCS = predict(rfCCS,newdata=CCSwithsplitvar[CCSwithsplitvar$Sample == "Validation",],type="prob")
+validrocrpredrfCCS=prediction(validpredrfCCS[,2],actualvalid)
+validrocrperfrfCCS=performance(validrocrpredrfCCS,"tpr","fpr")
+
+# plotting all
+plot(validrocrperfglm,col="cyan1",, main="ROC Curves: Validation")
+plot(validrocrperftree1ccs,col="gold4", add=TRUE)
+plot(validrocrperfnoAorLDA,col="blue",add=TRUE)
+plot(validrocrperfbaggingCCS,col="purple",add=TRUE)
+plot(validrocrperfrfCCS,col="red",add=TRUE)
+
+legend("bottomright",  c("LogReg","Tree1CCS","NoAorLDA","Bagging","Random Forest"), lty=c(1,1),col=c("cyan1","gold4","blue","purple","red"), horiz=FALSE)
+abline(a=0,b=1,lwd=2,lty=2,col="gray")
+```
+

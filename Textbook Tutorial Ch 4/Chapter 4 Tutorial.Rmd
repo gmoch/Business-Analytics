@@ -1,0 +1,135 @@
+---
+title: "Chapter 4 Tutorial"
+output: html_document
+---
+<!-- R Commander Markdown Template -->
+
+Replace with Main Title
+=======================
+
+### Your Name
+
+### `r as.character(Sys.Date())`
+
+```{r echo=FALSE}
+# include this code chunk as-is to set options
+knitr::opts_chunk$set(comment=NA, prompt=TRUE, out.width=750, fig.height=8, fig.width=8)
+library(Rcmdr)
+library(car)
+library(RcmdrMisc)
+```
+
+```{r}
+data(eggs)
+```
+
+```{r}
+data(Eggs, package="BCA")
+```
+
+```{r}
+scatterplot(Week~Egg.Pr, reg.line=lm, smooth=TRUE, spread=TRUE, id.method='mahal', 
+  id.n = 2, boxplots='xy', span=0.5, data=Eggs)
+```
+
+```{r}
+scatterplot(Cases~Egg.Pr, reg.line=lm, smooth=TRUE, spread=TRUE, id.method='mahal', 
+  id.n = 2, boxplots='xy', span=0.5, data=Eggs)
+```
+
+```{r}
+with(Eggs, lineplot(Week, Cases))
+```
+
+```{r}
+scatterplot(Cases~Egg.Pr, reg.line=lm, smooth=TRUE, spread=TRUE, id.method='mahal', 
+  id.n = 2, boxplots='xy', span=0.5, data=Eggs)
+```
+
+```{r}
+with(Eggs, lineplot(Week, Cases))
+```
+
+```{r}
+scatterplot(Cases~Egg.Pr, reg.line=lm, smooth=TRUE, spread=TRUE, id.method='mahal', 
+  id.n = 2, boxplots='xy', span=0.5, data=Eggs)
+```
+
+```{r}
+Boxplot(Cases~Easter, data=Eggs, id.method="y")
+```
+
+```{r}
+Boxplot(Cases~First.Week, data=Eggs, id.method="y")
+```
+
+```{r}
+scatterplotMatrix(~Beef.Pr+Cases+Cereal.Pr+Chicken.Pr+Egg.Pr+Pork.Pr+Week, 
+  reg.line=lm, smooth=TRUE, spread=FALSE, span=0.5, id.n=0, diagonal = 'boxplot', 
+  data=Eggs)
+```
+
+```{r}
+LinearEggs <- lm(Cases ~ Cases + Beef.Pr + Cereal.Pr + Easter + Egg.Pr + First.Week 
+  + Month + Pork.Pr, data=Eggs)
+summary(LinearEggs)
+```
+
+```{r}
+Anova(LinearEggs, type="II")
+```
+
+```{r}
+Eggs$Log.Cases <- with(Eggs, log(Cases))
+```
+
+```{r}
+Eggs$Log.Egg.Pr <- with(Eggs, log(Egg.Pr))
+```
+
+```{r}
+Eggs$Log.Cereal.Pr <- with(Eggs, log(Cereal.Pr))
+```
+
+```{r}
+Eggs$Log.Chicken.Pr <- with(Eggs, log(Chicken.Pr))
+```
+
+```{r}
+Eggs$Log.Pork.Pr <- with(Eggs, log(Pork.Pr))
+```
+
+```{r}
+Eggs$Log.Beef.Pr <- with(Eggs, log(Beef.Pr))
+```
+
+```{r}
+LinearModel.2 <- lm(Cases ~ Cases +Log.Pork.Pr + Log.Egg.Pr + Log.Chicken.Pr + 
+  Log.Cereal.Pr + Log.Beef.Pr + Easter + First.Week, data=Eggs)
+summary(LinearModel.2)
+```
+
+```{r}
+LinearModel.2 <- lm(Cases ~ Cases + Log.Pork.Pr + Log.Egg.Pr + Log.Chicken.Pr + 
+  Log.Cereal.Pr + Log.Beef.Pr + Easter + First.Week + Month, data=Eggs)
+summary(LinearModel.2)
+```
+
+```{r}
+LinearModel.4 <- lm(Cases ~ Cases + Log.Beef.Pr + Log.Cereal.Pr + Log.Chicken.Pr 
+  + Log.Egg.Pr + Log.Pork.Pr + Easter + Month + First.Week, data=Eggs)
+summary(LinearModel.4)
+```
+
+```{r}
+LinearModel.5 <- lm(Cases ~ Log.Cases + Log.Beef.Pr + Log.Cereal.Pr + 
+  Log.Chicken.Pr + Log.Egg.Pr + Log.Pork.Pr + Easter + Month + First.Week, 
+  data=Eggs)
+summary(LinearModel.5)
+```
+
+```{r}
+LinearModel.6 <- lm(Log.Cases ~ Log.Beef.Pr + Log.Cereal.Pr + Log.Chicken.Pr + 
+  Log.Egg.Pr + Log.Pork.Pr + Easter + Month + First.Week, data=Eggs)
+summary(LinearModel.6)
+```

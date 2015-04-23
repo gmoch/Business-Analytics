@@ -1,0 +1,34 @@
+---
+title: "Untitled"
+author: "Granger Moch"
+date: "March 19, 2015"
+output: html_document
+---
+
+```{r}
+devtools::install_github("rstudio/DT")
+library(DT)
+
+Venue= c("Pita Pit", "Wendy's", "Burger King", "Chipotle")
+Address=c("818 E Sharp Ave","830 N Division St", "North 1723 Division" ,"930 N Division St")
+Zip=c("99202","99202", "99207" ,"99202")
+GoogleURL=c("http://maps.google.com/?q=")
+ViewLocation= paste(GoogleURL,Venue,"+", Address,"+", Zip, sep="")
+
+testdf=data.frame(Venue, Address, Zip, ViewLocation)
+datatable(testdf)
+
+```
+?connections()
+?url()
+
+```{r}
+getUrl <- function(address,sensor = "false") {
+ root <- "http://maps.google.com/maps/api/geocode/json?"
+ u <- paste0(root,"address=", address, "&sensor=false")
+ return(URLencode(u))
+}
+getUrl("Denver, Colorado")
+
+```
+

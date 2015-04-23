@@ -1,0 +1,113 @@
+---
+title: "Assignment 3- Logistic Regression"
+author: Granger Moch and Sam Eckhardt
+output: 
+  html_document:
+    toc: true
+    number_sections: true 
+    theme: flatly 
+    highlight: zenburn
+---
+
+```{r}
+library(ISLR)
+Auto=data.frame(Auto)
+library(plyr)
+library(ggplot2)
+library(car)
+library(BCA)
+library(RcmdrMisc)
+```
+
+#Create Binary Variable (mpg01)
+```{r}
+median= median(Auto$mpg)
+Auto$mpg01[Auto$mpg>median] <- 1
+Auto$mpg01[Auto$mpg<=median] <- 0
+
+```
+#Explore Associations
+
+##Scatterplot of Mpg01 and Displacement
+```{r}
+scatterplot(mpg01~displacement, reg.line=lm, smooth=TRUE, spread=FALSE, 
+  id.method='mahal', id.n = 2, boxplots='xy', span=0.5, data=Auto)
+
+```
+##Scatterplot of Mpg01 and Horsepower
+```{r}
+scatterplot(mpg01~horsepower, reg.line=lm, smooth=TRUE, spread=TRUE, 
+  id.method='mahal', id.n = 2, boxplots='xy', span=0.5, data=Auto)
+
+
+
+```
+
+
+##Scatterplot of Mpg01 and Year
+```{r}
+scatterplot(mpg01~year, reg.line=lm, smooth=TRUE, spread=TRUE, 
+  id.method='mahal', id.n = 2, boxplots='xy', span=0.5, data=Auto)
+
+
+#id.method = "mahal"--Treat (x, y) as if it were a bivariate sample, and select cases according to their Mahalanobis distance from (mean(x), mean(y))
+
+#The Mahalanobis distance is a measure of the distance between a point (P) and a distribution (D). Introduced by P. C. Mahalanobis in 1936.
+```
+
+##Bin Horsepower and Year Variables
+```{r}
+Auto$horsepower.cat <- with(Auto, bin.var(horsepower, bins=4, method='proportions', 
+  labels=NULL))
+
+Auto$year.cat <- with(Auto, bin.var(year, bins=4, method='proportions', 
+  labels=NULL))
+
+```
+
+##Plot of Means With Binned Variables
+```{r}
+with(Auto, plotMeans(mpg01, horsepower.cat, error.bars="se"))
+with(Auto, plotMeans(mpg01, year.cat, error.bars="se"))
+
+```
+
+#Bin a few more variables
+```{r}
+
+ggplot(Auto,aes(x=weight)) +geom_bar()
+
+Auto$weight.cat<- with(Auto, bin.var(weight, bins=4, method='proportions', 
+  labels=FALSE))
+
+#Auto$origin.cat<- with(Auto, bin.var(weight, bins=3, method='proportions', 
+  #labels=FALSE))
+
+ggplot(Auto,aes(x=weight.cat)) +geom_bar()
+#ggplot(Auto,aes(x=year)) +geom_histogram()
+#ggplot(Auto,aes(x=origin)) +geom_histogram()
+#ggplot(Auto,aes(x=origin.cat)) +geom_histogram()
+
+```
+#Logistic Regression Model
+```{r}
+LinearAuto <- glm(mpg01 ~ horsepower +weight + year +origin, family=binomial(logit), data=Auto)
+LinearAuto1 <- glm(mpg01 ~ horsepower +weight.cat + year +origin, family=binomial(logit), data=Auto)
+LinearAuto2 <- glm(mpg01 ~ horsepower +log(weight) + year +origin, family=binomial(logit), data=Auto)
+LinearAuto3 <- glm(mpg01 ~ horsepower +log(weight) + log(year) +origin, family=binomial(logit), data=Auto)
+LinearAuto4 <- glm(mpg01 ~ log(horsepower) +log(weight) + log(year) +origin, family=binomial(logit), data=Auto)
+
+summary(LinearAuto)
+summary(LinearAuto1)#using binned weight  *lowest AIC
+summary(LinearAuto2) #logweight
+summary(LinearAuto3) #log weight, year
+summary(LinearAuto4) #log horsepower too
+
+1 - (LinearAuto$deviance/LinearAuto$null.deviance) #Mcfadden R2
+1 - (LinearAuto1$deviance/LinearAuto1$null.deviance) #Mcfadden R2 (highest)
+1 - (LinearAuto2$deviance/LinearAuto2$null.deviance) #Mcfadden R2
+1 - (LinearAuto3$deviance/LinearAuto3$null.deviance) #Mcfadden R2
+1 - (LinearAuto4$deviance/LinearAuto4$null.deviance) #Mcfadden R2
+
+Anova(LinearAuto, type="II", test="LR")
+```

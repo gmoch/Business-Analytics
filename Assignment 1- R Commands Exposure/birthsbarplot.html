@@ -1,0 +1,166 @@
+<!doctype HTML>
+<meta charset = 'utf-8'>
+<html>
+  <head>
+    <link rel='stylesheet' href='//cdnjs.cloudflare.com/ajax/libs/nvd3/1.1.15-beta/nv.d3.min.css'>
+    
+    <script src='//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js' type='text/javascript'></script>
+    <script src='//d3js.org/d3.v3.min.js' type='text/javascript'></script>
+    <script src='//cdnjs.cloudflare.com/ajax/libs/nvd3/1.1.15-beta/nv.d3.min.js' type='text/javascript'></script>
+    <script src='//nvd3.org/assets/lib/fisheye.js' type='text/javascript'></script>
+    
+    <style>
+    .rChart {
+      display: block;
+      margin-left: auto; 
+      margin-right: auto;
+      width: 800px;
+      height: 400px;
+    }  
+    </style>
+    
+  </head>
+  <body >
+    
+    <div id = 'chart9064591a8e8' class = 'rChart nvd3'></div>    
+    <script type='text/javascript'>
+ $(document).ready(function(){
+      drawchart9064591a8e8()
+    });
+    function drawchart9064591a8e8(){  
+      var opts = {
+ "dom": "chart9064591a8e8",
+"width":    800,
+"height":    400,
+"x": "days",
+"y": "birthsvalues",
+"group": "dtype",
+"type": "multiBarChart",
+"id": "chart9064591a8e8" 
+},
+        data = [
+ {
+ "birthsvalues": 31348,
+"days": "Sunday",
+"dtype": "Vaginal" 
+},
+{
+ "birthsvalues": 8836,
+"days": "Sunday",
+"dtype": "C-section" 
+},
+{
+ "birthsvalues": 42031,
+"days": "Monday",
+"dtype": "Vaginal" 
+},
+{
+ "birthsvalues": 20454,
+"days": "Monday",
+"dtype": "C-section" 
+},
+{
+ "birthsvalues": 46607,
+"days": "Tuesday",
+"dtype": "Vaginal" 
+},
+{
+ "birthsvalues": 22921,
+"days": "Tuesday",
+"dtype": "C-section" 
+},
+{
+ "birthsvalues": 46935,
+"days": "Wednesday",
+"dtype": "Vaginal" 
+},
+{
+ "birthsvalues": 23103,
+"days": "Wednesday",
+"dtype": "C-section" 
+},
+{
+ "birthsvalues": 47081,
+"days": "Thursday",
+"dtype": "Vaginal" 
+},
+{
+ "birthsvalues": 22825,
+"days": "Thursday",
+"dtype": "C-section" 
+},
+{
+ "birthsvalues": 44858,
+"days": "Friday",
+"dtype": "Vaginal" 
+},
+{
+ "birthsvalues": 23233,
+"days": "Friday",
+"dtype": "C-section" 
+},
+{
+ "birthsvalues": 34878,
+"days": "Saturday",
+"dtype": "Vaginal" 
+},
+{
+ "birthsvalues": 10696,
+"days": "Saturday",
+"dtype": "C-section" 
+} 
+]
+  
+      if(!(opts.type==="pieChart" || opts.type==="sparklinePlus" || opts.type==="bulletChart")) {
+        var data = d3.nest()
+          .key(function(d){
+            //return opts.group === undefined ? 'main' : d[opts.group]
+            //instead of main would think a better default is opts.x
+            return opts.group === undefined ? opts.y : d[opts.group];
+          })
+          .entries(data);
+      }
+      
+      if (opts.disabled != undefined){
+        data.map(function(d, i){
+          d.disabled = opts.disabled[i]
+        })
+      }
+      
+      nv.addGraph(function() {
+        var chart = nv.models[opts.type]()
+          .width(opts.width)
+          .height(opts.height)
+          
+        if (opts.type != "bulletChart"){
+          chart
+            .x(function(d) { return d[opts.x] })
+            .y(function(d) { return d[opts.y] })
+        }
+          
+         
+        
+          
+        chart.xAxis
+  .axisLabel("Days")
+
+        
+        
+        chart.yAxis
+  .axisLabel("Births")
+      
+       d3.select("#" + opts.id)
+        .append('svg')
+        .datum(data)
+        .transition().duration(500)
+        .call(chart);
+
+       nv.utils.windowResize(chart.update);
+       return chart;
+      });
+    };
+</script>
+    
+    <script></script>    
+  </body>
+</html>

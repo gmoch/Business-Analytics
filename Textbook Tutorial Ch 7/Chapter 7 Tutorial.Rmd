@@ -1,0 +1,204 @@
+---
+title: "Chapter 7 Tutorial: Decision Trees" 
+author: Granger Moch and Sam Eckhardt
+output: 
+  html_document:
+    toc: true
+    number_sections: false 
+    theme: flatly 
+    highlight: zenburn
+
+---
+
+```{r echo=FALSE}
+# include this code chunk as-is to set options
+knitr::opts_chunk$set(comment=NA, prompt=TRUE, out.width=750, fig.height=8, fig.width=8)
+library(Rcmdr)
+library(car)
+library(BCA)
+library(RcmdrMisc)
+library(rpart)
+library(rpart.plot)
+load("ch7_tut.RData")
+```
+#Load Data
+```{r}
+data(CCS, package="BCA")
+```
+#Create 50/50 Sample
+```{r}
+CCS$Sample <- create.samples(CCS, est = 0.50, val = 0.50, rand.seed = 1)
+```
+#Create tree1CCS model
+```{r}
+tree1CCS <- rpart(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + 
+  Age80pls + Age70pls + AveDonAmt + AveIncEA + DonPerYear + DwelValEA + 
+  EngPrmLang + FinUnivP + hh1mem + hh1t2mem + LastDonAmt + NewDonor + Region + 
+  SomeUnivP + YearsGive, data=CCS, cp=0.01, subset=Sample == "Estimation")
+tree1CCS # Tree Leaf Summary
+```
+#Plot of tree1CCS model without uniform branch distance
+```{r}
+rpart.plot(tree1CCS, type = 0, extra = 2, uniform = FALSE, fallen.leaves = 
+  TRUE)
+```
+
+#Plot of tree1CCS model with uniform branch distance
+```{r}
+rpart.plot(tree1CCS, type = 0, extra = 2, uniform = TRUE, fallen.leaves = 
+  FALSE)
+```
+
+#Model showing proportions 
+```{r}
+rpart.plot(tree1CCS, type = 0, extra = 4, uniform = TRUE, fallen.leaves = 
+  FALSE)
+```
+
+#Create Log Variable
+```{r}
+CCS$Log.AveDonAmt <- with(CCS, log(AveDonAmt))
+```
+
+#New model using log variable
+```{r}
+tree2CCS <- rpart(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + 
+  Age80pls + Age70pls  + AveIncEA + DonPerYear + DwelValEA + EngPrmLang + 
+  FinUnivP + hh1mem + hh1t2mem + LastDonAmt + NewDonor + Region + SomeUnivP + 
+  YearsGive + Log.AveDonAmt, data=CCS, cp=0.01, subset=Sample == "Estimation")
+tree2CCS # Tree Leaf Summary
+```
+
+#Plot of new model
+```{r}
+rpart.plot(tree2CCS, type = 0, extra = 2, uniform = TRUE, fallen.leaves = 
+  FALSE)
+```
+
+#Delete Log Variable
+```{r}
+CCS <- within(CCS, {
+  Log.AveDonAmt <- NULL 
+})
+```
+
+#Rerun model as "TreeNoADA", without AveDonAmt
+```{r}
+TreeNoADA <- rpart(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + 
+  Age80pls + Age70pls + AveIncEA + DonPerYear + DwelValEA + EngPrmLang + 
+  FinUnivP + hh1mem + hh1t2mem + LastDonAmt + NewDonor + Region + SomeUnivP + 
+  YearsGive, data=CCS, cp=0.01, subset=Sample == "Estimation")
+TreeNoADA # Tree Leaf Summary
+```
+
+#Plot of TreeNoADA
+```{r}
+rpart.plot(TreeNoADA, type = 0, extra = 2, uniform = TRUE, fallen.leaves = 
+  FALSE)
+```
+
+#Investigate potential correlation between variables in noAorLDA model
+
+AveDonAmt and LastDonAmt were removed from this model
+```{r}
+noAorLDA <- rpart(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + 
+  Age80pls + Age70pls + AveIncEA + DonPerYear + DwelValEA + EngPrmLang + FinUnivP 
+  + hh1mem + hh1t2mem +  NewDonor + Region + SomeUnivP + YearsGive, data=CCS, 
+  cp=0.01, subset=Sample == "Estimation")
+plotcp(noAorLDA)
+printcp(noAorLDA) # Pruning Table
+noAorLDA # Tree Leaf Summary
+```
+
+#Model with adjusted complexity paremeter(.04)
+```{r}
+noAorLDA04 <- rpart(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + 
+  Age80pls + Age70pls + AveIncEA + DonPerYear + DwelValEA + EngPrmLang + 
+  FinUnivP + hh1mem + hh1t2mem + NewDonor + Region + SomeUnivP + YearsGive, 
+  data=CCS, cp=0.04, subset=Sample == "Estimation")
+noAorLDA04 # Tree Leaf Summary
+```
+##Plot
+```{r}
+rpart.plot(noAorLDA04, type = 0, extra = 2, uniform = TRUE, fallen.leaves = 
+  FALSE)
+```
+
+#Second model with adjusted complexity paremeter(.012)
+```{r}
+noAorLDA012 <- rpart(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + 
+  Age80pls + Age70pls + AveIncEA + DonPerYear + DwelValEA + EngPrmLang + FinUnivP 
+  + hh1mem + hh1t2mem + NewDonor + Region + SomeUnivP + YearsGive, data=CCS, 
+  cp=.012, subset=Sample == "Estimation")
+```
+
+##Plot
+```{r}
+rpart.plot(noAorLDA012, type = 0, extra = 2, uniform = TRUE, fallen.leaves = 
+  FALSE)
+```
+
+#Third model with adjusted complexity parameter(.013)
+```{r}
+noAorLDA013 <- rpart(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + 
+  Age80pls + Age70pls + AveIncEA + DonPerYear + DwelValEA + EngPrmLang + FinUnivP + 
+  hh1mem + hh1t2mem + NewDonor + Region + SomeUnivP + YearsGive, data=CCS, cp=0.013,
+   subset=Sample == "Estimation")
+```
+
+##Plot
+```{r}
+rpart.plot(noAorLDA013, type = 0, extra = 2, uniform = TRUE, fallen.leaves = 
+  FALSE)
+```
+
+#Lift chart to assess models
+```{r}
+lift.chart(c("noAorLDA", "noAorLDA012", "noAorLDA013", "noAorLDA04"), 
+  CCS[CCS$Sample == "Estimation",], "Yes", .01, "cumulative", "Estimation")
+```
+
+#Full Model(cp=.001)
+```{r}
+Full001 <- rpart(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + Age80pls 
+  + Age70pls + AveIncEA + DonPerYear + DwelValEA + EngPrmLang + FinUnivP + hh1mem + 
+  hh1t2mem + NewDonor + Region + SomeUnivP + YearsGive + AveDonAmt + LastDonAmt, 
+  data=CCS, cp=0.001, subset=Sample == "Estimation")
+printcp(Full001) # Pruning Table
+```
+
+#Full Model 2(cp=.02)
+```{r}
+Full02 <- rpart(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + 
+  Age80pls + Age70pls + AveIncEA + DonPerYear + DwelValEA + EngPrmLang + 
+  FinUnivP + hh1mem + hh1t2mem + NewDonor + Region + SomeUnivP + YearsGive + 
+  AveDonAmt + LastDonAmt, data=CCS, cp=0.02, subset=Sample == "Estimation")
+printcp(Full02) # Pruning Table
+```
+
+##Plot
+```{r}
+rpart.plot(Full02, type = 0, extra = 2, uniform = TRUE, fallen.leaves = 
+  FALSE)
+```
+
+#Model with adjusted cp(.011)
+```{r}
+Full011 <- rpart(MonthGive ~ AdultAge + Age20t29 + Age20t39 + Age60pls + 
+  Age80pls + Age70pls + AveIncEA + DonPerYear + DwelValEA + EngPrmLang + 
+  FinUnivP + hh1mem + hh1t2mem + NewDonor + Region + SomeUnivP + YearsGive + 
+  AveDonAmt + LastDonAmt, data=CCS, cp=0.011, subset=Sample == "Estimation")
+```
+
+##Plot
+```{r}
+rpart.plot(Full011, type = 0, extra = 2, uniform = TRUE, fallen.leaves = 
+  FALSE)
+```
+
+#Comparison of models using cumulative response liftchart
+```{r}
+lift.chart(c("Full001", "Full011", "Full02", "noAorLDA"), CCS[CCS$Sample == 
+  "Validation",], "Yes", .01, "cumulative", "Validation")
+```
+Full011 appears to be the best performing model in this case.

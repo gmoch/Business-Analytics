@@ -1,0 +1,261 @@
+---
+title: "<center>Bagging and Random Forests Assignment</center>"
+author: "<center>Granger Moch, Sam Eckhardt</center>" 
+date: "<center>March 31, 2015</center> <hr>"
+output: 
+  html_document:
+    fontsize: 9pt
+    toc: true
+    number_sections: FALSE 
+    theme: flatly 
+    highlight: zenburn
+---
+<hr>
+
+### Load Packages and Carseats Dataset
+```{r, message=FALSE, warning=FALSE}
+library(ISLR)
+library(ggplot2)
+library(RcmdrMisc)
+library(BCA)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(ROCR)
+
+Carseats=data.frame(Carseats)
+
+```
+
+### Create Binary Variable and Samples
+```{r}
+Carseats$High<- as.factor(ifelse(Carseats$Sales <= 8, "No", "Yes"))
+Carseats$Sample= create.samples(Carseats, est = 0.50, val = 0.50, rand.seed = 1)
+```
+ 
+### Explore Factor Variables with Plots of Means
+```{r}
+
+summary(Carseats)
+#ShelveLoc Factor
+with(Carseats, plotMeans(Sales, ShelveLoc, error.bars="se"))
+#Urban factor
+with(Carseats, plotMeans(Sales, Urban, error.bars="se"))
+```
+<center><br>It seems that good shelf space likely contributes to higher sales, as one would expect. As for whether a person is from an urban area or not, there doesn't seem to be too significant of a difference in sales. </center><br>
+
+### Explore Data Further
+```{r, message=FALSE, warning=FALSE}
+ggplot(Carseats, aes(x=Advertising, y=Sales)) +
+    geom_point(shape=1) +geom_smooth(stat="smooth") 
+
+ggplot(Carseats, aes(x=Price, y=Sales)) +
+    geom_point(shape=1) +geom_smooth(stat="smooth") 
+```
+
+<center>Advertising does seem to contribute to higher sales, while higher prices indicate decreased sales.<center>
+###Create Logistic Regression Model
+```{r}
+CarseatsModel1= glm(High~ Income+ ShelveLoc + Education + Urban + US + CompPrice + Advertising, family=binomial(logit), data=Carseats, subset=Sample== "Estimation")
+```
+
+###Assess Model
+```{r}
+summary(CarseatsModel1)
+
+1 - (CarseatsModel1$deviance/CarseatsModel1$null.deviance) #McFadden R2
+```
+
+The variables ShelveLoc, Advertising, and Income appear to be highly significant, while Education, CompPrice, and US appear to be insignificant. 
+
+###Create Second Model
+```{r}
+CarseatsModel2= glm(High~ Income+ ShelveLoc + Urban + Advertising, family=binomial(logit), data=Carseats, subset=Sample== "Estimation")
+
+summary(CarseatsModel2)
+
+1 - (CarseatsModel2$deviance/CarseatsModel2$null.deviance) # McFadden R2
+```
+
+<br><center>The AIC is minimized with this model, so we will select this second model for use.</center> <br>
+
+###Decision Tree
+```{r}
+carTree <- rpart(High~ Income+ Price+ Population+ ShelveLoc + Education + Urban + US + CompPrice + Advertising, data = Carseats, cp = 0.001, subset = Sample == "Estimation")
+
+rpart.plot(carTree)
+```
+
+###Identify Minimum CP Value
+```{r}
+plotcp(carTree)
+```
+
+###Prune Tree Using Min CP Value (.049)
+```{r}
+carTreePruned <- prune(carTree, cp=.049)
+
+rpart.plot(carTreePruned)
+```
+
+###Bagging 
+```{r}
+set.seed(1)
+
+baggingCarseats = randomForest(High~ Income+ Price+ Population+ ShelveLoc + Education + Urban + US + CompPrice + Advertising, data = Carseats[Carseats$Sample == "Estimation", 
+    ], mtry = 9, importance = TRUE)
+
+baggingCarseats
+
+```
+
+###Assess Variable Importance
+```{r}
+importance(baggingCarseats)
+varImpPlot(baggingCarseats)
+```
+<br><br>Shelf Location, Price, Advertising are clearly the most important variables in the dataset, as their invidual absence from the model leads to the largest mean decreases in both accuracy and the gini index. On the other hand, Urban, Education, and US appear to be the least significant variables in this dataset.<br>
+
+###Random Forest
+```{r}
+RfCarseats = randomForest(High~ Income+ Price+ Population+ ShelveLoc + Education + Urban + US + CompPrice + Advertising, data = Carseats[Carseats$Sample == "Estimation", 
+    ],importance = TRUE)
+
+RfCarseats
+```
+
+###ROCR Predicition/Preformance Data
+###Gains Chart Estimation Data
+```{r}
+
+#Gains Chart Estimation Data
+```{r}
+act_estim = Carseats[Carseats$Sample == "Estimation", ]$High
+
+# for logistic regression
+estimpredglm = predict(CarseatsModel2, newdata = Carseats[Carseats$Sample == "Estimation", ], type = "response")
+
+estimrocrpredglm = prediction(estimpredglm, act_estim)
+estimrocrperfglm = performance(estimrocrpredglm, "tpr", "rpp")
+
+# for logistic regression (initial model)
+estimpredglmOld = predict(CarseatsModel1, newdata = Carseats[Carseats$Sample == "Estimation", ], type = "response")
+
+estimrocrpredglmOld = prediction(estimpredglmOld, act_estim)
+estimrocrperfglmOld = performance(estimrocrpredglmOld, "tpr", "rpp")
+
+#for tree
+estimpredTree = predict(carTreePruned, type = "prob", newdata = Carseats[Carseats$Sample == "Estimation", ])
+
+estimrocrpredTree = prediction(estimpredTree[, 2], act_estim)
+estimrocrperfTree = performance(estimrocrpredTree, "tpr", "rpp")
+
+#for bagging
+estimpredBag = predict(baggingCarseats, type = "prob", newdata = Carseats[Carseats$Sample == "Estimation", ])
+
+estimrocrpredBag = prediction(estimpredBag[, 2], act_estim)
+estimrocrperfBag = performance(estimrocrpredBag, "tpr", "rpp")
+
+#random forest
+estimpredRF = predict(RfCarseats, type = "prob", newdata = Carseats[Carseats$Sample == "Estimation", ])
+
+estimrocrpredRF = prediction(estimpredRF[, 2], act_estim)
+estimrocrperfRF = performance(estimrocrpredRF, "tpr", "rpp")
+
+```
+
+
+###Gains Chart Validation Data
+```{r}
+act_estim1 = Carseats[Carseats$Sample == "Validation", ]$High
+
+# for logistic regression
+estimpredglm1 = predict(CarseatsModel2, newdata = Carseats[Carseats$Sample == "Validation", ], type = "response")
+
+estimrocrpredglm1 = prediction(estimpredglm1, act_estim1)
+estimrocrperfglm1 = performance(estimrocrpredglm1, "tpr", "rpp")
+
+# for logistic regression (initial model)
+estimpredglmOld1 = predict(CarseatsModel1, newdata = Carseats[Carseats$Sample == "Validation", ], type = "response")
+
+estimrocrpredglmOld1= prediction(estimpredglmOld1, act_estim1)
+estimrocrperfglmOld1 = performance(estimrocrpredglmOld1, "tpr", "rpp")
+
+#for tree
+estimpredTree1 = predict(carTreePruned, type = "prob", newdata = Carseats[Carseats$Sample == "Validation", ])
+
+estimrocrpredTree1 = prediction(estimpredTree1[, 2], act_estim1)
+estimrocrperfTree1 = performance(estimrocrpredTree1, "tpr", "rpp")
+
+#for bagging
+estimpredBag1 = predict(baggingCarseats, type = "prob", newdata = Carseats[Carseats$Sample == "Validation", ])
+
+estimrocrpredBag1 = prediction(estimpredBag1[, 2], act_estim1)
+estimrocrperfBag1 = performance(estimrocrpredBag1, "tpr", "rpp")
+
+#random forest
+estimpredRF1 = predict(RfCarseats, type = "prob", newdata = Carseats[Carseats$Sample == "Validation", ])
+
+estimrocrpredRF1 = prediction(estimpredRF1[, 2], act_estim1)
+estimrocrperfRF1 = performance(estimrocrpredRF1, "tpr", "rpp")
+
+```
+
+###Gains Charts (Estimation Data)
+```{r, echo=FALSE}
+
+plot(estimrocrperfglm, main="Gains Chart-Estimation Data", col="black")
+plot(estimrocrperfTree, col="green", add=TRUE) 
+plot(estimrocrperfBag, col="red", add=TRUE)
+plot(estimrocrperfRF, col="gray", add=TRUE)
+plot(estimrocrperfglmOld, col="blue", add=TRUE)
+legend("bottomright",  c("GLM1","Decision Tree", "Bagging","RF", "GLM2"), lty=c(1,1),col=c("black","green", "red", "gray", "blue"), horiz=FALSE)
+abline(a=0,b=1,lwd=2,lty=2,col="black") 
+```
+
+###Gains Charts (Validation Data)
+```{r, echo=FALSE}
+plot(estimrocrperfglm1, main="Gains Chart- Validation Data", col="black")
+plot(estimrocrperfTree1, col="green", add=TRUE) 
+plot(estimrocrperfBag1, col="red", add=TRUE)
+plot(estimrocrperfRF1, col="gray", add=TRUE)
+plot(estimrocrperfglmOld1, col="blue", add=TRUE)
+legend("bottomright",  c("GLM1","Decision Tree", "Bagging","RF", "GLM2"), lty=c(1,1),col=c("black","green", "red", "gray", "blue"), horiz=FALSE)
+abline(a=0,b=1,lwd=2,lty=2,col="black") 
+```
+
+###ROC Curve (Estimation)
+```{r, echo=FALSE}
+perflog1pred=performance(estimrocrpredglm,"tpr","fpr")
+perflog2pred= performance(estimrocrpredglmOld, "tpr","fpr")
+perfCarTreePruned= performance(estimrocrpredTree, "tpr","fpr")
+perfRf= performance(estimrocrpredRF, "tpr", "fpr")
+perfBagging= performance(estimrocrpredBag, "tpr", "fpr")
+
+plot(perflog1pred, main="ROC Curve: Estimation", col="black")
+plot(perflog2pred, col="brown", add=TRUE)
+plot(perfCarTreePruned, col="green", add=TRUE)
+plot(perfRf, col="gray", add=TRUE)
+plot(perfBagging, col="red", add=TRUE)
+legend("bottomright",  c("GLM2","GLM1", "Decision Tree","RF", "Bagging"), lty=c(1,1),col=c("black","brown", "green", "gray", "red"), horiz=FALSE)
+abline(a=0,b=1,lwd=2,lty=2,col="black") 
+```
+
+###ROC Curve (Validation)
+```{r, echo= FALSE}
+perflog1predV=performance(estimrocrpredglm1,"tpr","fpr")
+perflog2predV= performance(estimrocrpredglmOld1, "tpr","fpr")
+perfCarTreePrunedV= performance(estimrocrpredTree1, "tpr","fpr")
+perfRfV= performance(estimrocrpredRF1, "tpr", "fpr")
+perfBaggingV= performance(estimrocrpredBag1, "tpr", "fpr")
+
+plot(perflog1predV, main="ROC Curve: Validation", col="black")
+plot(perflog2predV, col="brown", add=TRUE)
+plot(perfCarTreePrunedV, col="green", add=TRUE)
+plot(perfRfV, col="gray", add=TRUE)
+plot(perfBaggingV, col="red", add=TRUE)
+legend("bottomright",  c("GLM2","GLM1", "Decision Tree","RF", "Bagging"), lty=c(1,1),col=c("black","brown", "green", "gray", "red"), horiz=FALSE)
+abline(a=0,b=1,lwd=2,lty=2,col="black") 
+```
+
+Based on the graphs above, Random Forests seem to perform better than the other predictive models tested in this demonstration.
