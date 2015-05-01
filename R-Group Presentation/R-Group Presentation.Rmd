@@ -1,0 +1,176 @@
+---
+title: "R-Group Presentation"
+author: "Granger Moch, Sam Eckhardt"
+date: "April 25, 2015"
+output:
+  slidy_presentation:
+    theme: flatly 
+    highlight: pygments
+    footer: "Granger Moch, Sam Eckhardt"
+---
+
+
+## Applied Data Mining for Business Decision Making Using R
+
+<center>Customer and Business Analytics: Applied Data Mining for Business Decision Making Using R <br><br> by Daniel S. Putler and Robert E. Krider.</center> <br>
+
+<b>Objectives:</b><br><br>
+-Addressing business problems with advanced analytical tools <br> <br>
+-Understanding of how data mining algorithms work <br> <br>
+-Hands-on approach
+
+##Predictive Modeling Techniques
+
+```{r}
+#Logistic Regression
+
+```
+
+##Logistic Regression
+```{r}
+
+
+```
+
+## Load Required Packages and Data Set
+
+```{r, warning=FALSE}
+library(BCA)
+library(MASS)
+library(plyr)
+library(ggplot2)
+library(car)
+library(RcmdrMisc)
+
+biopsydf=biopsy
+```
+
+
+OVERSAMPLED?
+
+```{r}
+count(biopsydf$class=="benign")
+
+#      x freq
+#1 FALSE  241
+#2  TRUE  458 
+```
+
+## Explore Data
+```{r}
+str(biopsydf)
+```
+
+## Set Record Names
+```{r}
+biopsydf$ID<- NULL
+```
+Since these “variables” are merely identifiers, they will
+not actually be used in any analyses that we will do. We can ensure that
+we will never accidentally use it as an analysis variable by setting HH.ID as
+a record-name data type now. This step should ALWAYS be taken with a
+new data set that has identification variables.
+
+## Rename Variables
+```{r}
+biopsydf=rename(biopsydf, c("V1"="clump_thick", "V2"= "uniCellSize", "V3"="uniCellShape", "V4"="marg_ad", "V5"="epiCellSize","V6"="bareNuclei", "V7"="blandChrom", "V8"="normNucleoli", "V9"="mitoses"))
+
+names(biopsydf)
+str(biopsydf)
+```
+
+## Explore Data
+```{r}
+summary(biopsydf)
+```
+
+## Recode Target Variable
+```{r}
+biopsydf$class<- as.numeric(ifelse(biopsydf$class=="benign", 0, 1))
+
+str(biopsydf$class)
+```
+
+
+## Create Sample
+```{r}
+biopsydf$Sample <- create.samples(biopsydf, est = 0.50, val = 0.50, rand.seed = 1)
+```
+
+str(biopsydf)
+## Bin blandChrom Variable
+
+```{r}
+biopsydf$blandChrom.cat <- with(biopsydf, bin.var(blandChrom, bins=4, method='intervals', 
+  labels=NULL))
+
+```
+
+##Plot of Means
+```{r}
+#create separate data set for these plots
+
+with(biopsydf, plotMeans(class, blandChrom.cat, error.bars="se"))
+```
+
+
+## Bin clump_thick Variable
+
+```{r}
+biopsydf$clump_thick.cat <- with(biopsydf, bin.var(clump_thick, bins=5, method='intervals', 
+  labels=NULL))
+
+```
+
+
+##Plot of Means
+```{r}
+
+with(biopsydf, plotMeans(class, clump_thick.cat, error.bars="se"))
+```
+
+## Bin clump_thick Variable
+
+```{r}
+biopsydf$marg_ad.cat <- with(biopsydf, bin.var(marg_ad, bins=4, method='intervals', 
+  labels=NULL))
+
+```
+
+##Plot of Means
+```{r}
+
+with(biopsydf, plotMeans(class, marg_ad.cat, error.bars="se"))
+```
+
+## Correlation Matrix
+```{r}
+cor(biopsydf[,c("uniCellSize","marg_ad","uniCellShape","epiCellSize", "bareNuclei", "blandChrom", "normNucleoli", "mitoses", "clump_thick")], use="complete")
+```
+Uniform cell size and uniform cell shape appear to be correlated.
+
+## Create logistic model
+```{r}
+
+biopsyGLM= glm(class~ clump_thick + uniCellSize + uniCellShape + marg_ad + epiCellSize + bareNuclei + blandChrom + normNucleoli + mitoses, family=binomial(logit), data=biopsydf)
+
+summary(biopsyGLM)
+
+biopsyGLM1= glm(class~ clump_thick + uniCellSize + marg_ad + epiCellSize + bareNuclei + blandChrom + normNucleoli + mitoses, family=binomial(logit), data=biopsydf)
+
+summary(biopsyGLM1)
+
+biopsyGLM2=glm(class~ clump_thick + uniCellShape + marg_ad + bareNuclei + blandChrom + normNucleoli, family=binomial(logit), data=biopsydf)
+#unicellShape is now significant 
+
+summary(biopsyGLM2)
+
+biopsyGLM3=glm(class~ log(clump_thick) + log(uniCellShape) + log(marg_ad) + log(bareNuclei) + log(blandChrom) + log(normNucleoli), family=binomial(logit), data=biopsydf)
+
+summary(biopsyGLM3)
+```
+
+
+```{r}
+lift.chart(c("biopsyGLM", "biopsyGLM1", "biopsyGLM2", "biopsyGLM3" ), biopsydf[biopsydf$Sample=="Estimation",], 1, .51, "cumulative", "Estimation")
+```
